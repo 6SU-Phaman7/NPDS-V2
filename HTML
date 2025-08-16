@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Command Runner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fira Code', monospace;
+            background-color: #1a1b26;
+            color: #a9b1d6;
+        }
+        #terminal {
+            height: calc(100vh - 4rem);
+            background-color: #1a1b26;
+            border: 1px solid #414868;
+        }
+        .prompt {
+            color: #7aa2f7;
+        }
+        .command-input {
+            background-color: transparent;
+            border: none;
+            outline: none;
+            color: #c0caf5;
+            width: calc(100% - 2rem);
+        }
+        .output-line {
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #f7768e;
+        }
+        .success {
+            color: #9ece6a;
+        }
+        /* Blinking cursor effect */
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.2em;
+            background-color: #c0caf5;
+            animation: blink 1s step-end infinite;
+            vertical-align: bottom;
+        }
+        @keyframes blink {
+            from, to { background-color: transparent }
+            50% { background-color: #c0caf5; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-4 text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-white">Android Command Simulator</h1>
+            <p class="text-sm text-gray-400">Type 'help' to see a list of available commands.</p>
+        </header>
+
+        <!-- Terminal UI -->
+        <div id="terminal" class="w-full rounded-lg p-4 overflow-y-auto" onclick="document.getElementById('commandInput').focus()">
+            <div id="output">
+                <div class="output-line">Welcome to Android Command Simulator v1.0</div>
+                <div class="output-line">------------------------------------------</div>
+                <div class="output-line">&nbsp;</div>
+            </div>
+            <div class="flex items-center">
+                <span class="prompt mr-2">&gt;</span>
+                <input type="text" id="commandInput" class="command-input flex-grow" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="cursor"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const commandInput = document.getElementById('commandInput');
+        const outputDiv = document.getElementById('output');
+        const terminal = document.getElementById('terminal');
+
+        // --- Command History ---
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        // --- Event Listener for Command Input ---
+        commandInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const command = commandInput.value.trim();
+                if (command !== '') {
+                    // Add to history and reset index
+                    commandHistory.push(command);
+                    historyIndex = commandHistory.length;
+                    
+                    // Display command in output
+                    displayLine(`<span class="prompt">&gt;</span> ${command}`);
+                    
+                    // Process the command
+                    processCommand(command);
+                }
+                commandInput.value = '';
+                scrollToBottom();
+            } else if (event.key === 'ArrowUp') {
+                 // Navigate up through command history
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    commandInput.value = commandHistory[historyIndex];
+                }
+            } else if (event.key === 'ArrowDown') {
+                // Navigate down through command history
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    commandInput.value = commandHistory[historyIndex];
+                } else {
+                    // Clear input if at the end of history
+                    historyIndex = commandHistory.length;
+                    commandInput.value = '';
+                }
+            }
+        });
+
+        /**
+         * Processes the user-entered command.
+         * @param {string} command - The command to process.
+         */
+        function processCommand(command) {
+            const parts = command.split(' ');
+            const baseCommand = parts[0].toLowerCase();
+            const args = parts.slice(1);
+
+            switch (baseCommand) {
+                case 'help':
+                    displayHelp();
+                    break;
+                case 'adb':
+                    handleAdbCommands(args);
+                    break;
+                case 'ls':
+                    displayLine('drwxr-xr-x 2 root root 4096 2025-08-16 14:55 .');
+                    displayLine('drwxr-xr-x 2 root root 4096 2025-08-16 14:55 ..');
+                    displayLine('-rw-r--r-- 1 root root 12345 2025-08-16 10:30 build.prop');
+                    displayLine('drwxr-xr-x 5 system system 4096 2025-08-15 09:00 data');
+                    displayLine('drwxr-xr-x 2 root root 4096 2025-08-14 18:20 sdcard');
+                    break;
+                case 'pwd':
+                    displayLine('/system');
+                    break;
+                case 'echo':
+                    displayLine(args.join(' '));
+                    break;
+                case 'date':
+                    displayLine(new Date().toString());
+                    break;
+                case 'whoami':
+                    displayLine('shell');
+                    break;
+                case 'clear':
+                    outputDiv.innerHTML = '';
+                    break;
+                default:
+                    displayLine(`-bash: ${command}: command not found`, 'error');
+                    break;
+            }
+        }
+        
+        /**
+         * Handles simulated ADB sub-commands.
+         * @param {string[]} args - The arguments for the adb command.
+         */
+        function handleAdbCommands(args) {
+            if (args.length === 0) {
+                displayLine('Android Debug Bridge version 1.0.41', 'success');
+                displayLine('Usage: adb &lt;command&gt;');
+                return;
+            }
+            
+            const subCommand = args[0].toLowerCase();
+            switch(subCommand) {
+                case 'devices':
+                    displayLine('List of devices attached');
+                    displayLine('emulator-5554\tdevice');
+                    break;
+                case 'reboot':
+                    displayLine('Device is rebooting...');
+                    break;
+                case 'version':
+                    displayLine('Android Debug Bridge version 1.0.41');
+                    displayLine('Version 33.0.3-8952118');
+                    break;
+                default:
+                    displayLine(`adb: unknown command ${subCommand}`, 'error');
+                    break;
+            }
+        }
+
+        /**
+         * Displays the help message with available commands.
+         */
+        function displayHelp() {
+            const commands = {
+                'help': 'Shows this list of commands.',
+                'adb devices': 'Lists connected devices.',
+                'adb reboot': 'Simulates rebooting the device.',
+                'adb version': 'Shows the ADB version.',
+                'ls': 'Lists files in the current directory.',
+                'pwd': 'Prints the current working directory.',
+                'echo [text]': 'Prints the provided text.',
+                'date': 'Displays the current date and time.',
+                'whoami': 'Displays the current user.',
+                'clear': 'Clears the terminal screen.'
+            };
+            displayLine('Available commands:', 'success');
+            for (const cmd in commands) {
+                // Pad the command to align descriptions
+                const paddedCmd = cmd.padEnd(20, ' ');
+                displayLine(`<span class="prompt">${paddedCmd}</span> - ${commands[cmd]}`);
+            }
+        }
+
+        /**
+         * Appends a new line to the terminal output.
+         * @param {string} text - The text to display.
+         * @param {string} className - An optional CSS class for styling (e.g., 'error', 'success').
+         */
+        function displayLine(text, className = '') {
+            const line = document.createElement('div');
+            line.classList.add('output-line');
+            if (className) {
+                line.classList.add(className);
+            }
+            line.innerHTML = text; // Use innerHTML to render spans for colors
+            outputDiv.appendChild(line);
+        }
+
+        /**
+         * Scrolls the terminal to the bottom.
+         */
+        function scrollToBottom() {
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Initial focus
+        commandInput.focus();
+    </script>
+</body>
+</html>
